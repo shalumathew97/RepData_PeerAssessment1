@@ -1,25 +1,123 @@
 ---
-title: "Reproducible Research: Peer Assessment 1"
-output: 
+title: 'Reproducible Research: Peer Assessment 1'
+output:
   html_document:
-    keep_md: true
+    keep_md: yes
+  word_document: default
 ---
+
+# Loading required packages
+```{r}
+library(knitr)
+opts_chunk$set(echo =TRUE)
+library(dplyr)
+library(lubridate)
+library(ggplot2)
+```
 
 
 ## Loading and preprocessing the data
-
-
-
+**LOADING DATA**
+```{r}
+data=read.csv("C:\\Users\\hp\\Downloads\\repdata_data_activity (1)\\activity.csv")
+```
+**TIDYING THE DATA**
+```{r}
+data$date <- ymd(data$date)
+```
 ## What is mean total number of steps taken per day?
+**1)CALCULATING THE STEPS TAKEN**
+```{r}
+steps <- data %>%
+  filter(!is.na(steps)) %>%
+  group_by(date) %>%
+  summarize(steps = sum(steps)) %>%
+  print
+```
+**PLOT USING GGPLOT**
+```{r}
+ggplot(steps, aes(x = steps)) +
+  geom_histogram(fill = "firebrick", binwidth = 1000) +
+  labs(title = "Histogram of Steps per day", x = "Steps per day", y = "Frequency")
+mean_steps <- mean(steps$steps, na.rm = TRUE)
+mean_steps
+median_steps <- median(steps$steps, na.rm = TRUE)
+median_steps
+```
 
 
 
 ## What is the average daily activity pattern?
+**CALCULATING THE AVERAGE STEPS**
+```{r}
+interval <- data %>%
+  filter(!is.na(steps)) %>%
+  group_by(interval) %>%
+  summarize(steps = mean(steps))
+```
 
-
-
+**PLOTTING THE GRAPH**
+```{r}
+ggplot(interval, aes(x=interval, y=steps)) +
+  geom_line(color = "firebrick")
+```
+**FINDING THE MAX STEPS:**
+```{r}
+interval[which.max(interval$steps),]
+```
 ## Imputing missing values
+**FILLING IN THE MISSING VALUES**
+```{r}
+data_full <- data
+nas <- is.na(data_full$steps)
+avg_interval <- tapply(data_full$steps, data_full$interval, mean, na.rm=TRUE, simplify=TRUE)
+data_full$steps[nas] <- avg_interval[as.character(data_full$interval[nas])]
+```
+**CALCULATING THE STEPS**
 
+```{r}
+steps_full <- data_full %>%
+  filter(!is.na(steps)) %>%
+  group_by(date) %>%
+  summarize(steps = sum(steps)) %>%
+  print
+```
+**PLOTTING THE GRAPH**
+```{r}
+ggplot(steps_full, aes(x = steps)) +
+  geom_histogram(fill = "firebrick", binwidth = 1000) +
+  labs(title = "Histogram of Steps per day, including missing values", x = "Steps per day", y = "Frequency")
+```
 
+**CALCULATING THE MEAN AND THE MEDIAN**
+
+```{r}
+mean_steps_full <- mean(steps_full$steps, na.rm = TRUE)
+mean_steps_full
+median_steps_full <- median(steps_full$steps, na.rm = TRUE)
+median_steps_full
+```
 
 ## Are there differences in activity patterns between weekdays and weekends?
+**WHETHER WEEKDAY OR WEEKEND:**
+```{r}
+data_full <- mutate(data_full, weektype = ifelse(weekdays(data_full$date) == "Saturday" | weekdays(data_full$date) == "Sunday", "weekend", "weekday"))
+data_full$weektype <- as.factor(data_full$weektype)
+head(data_full)
+```
+
+**AVERAGE STEPS IN 5 MINS INTERVALS:**
+```{r}
+interval_full <- data_full %>%
+  group_by(interval, weektype) %>%
+  summarise(steps = mean(steps))
+```
+
+**PLOTTING THE GRAPH:**
+
+```{r}
+s <- ggplot(interval_full, aes(x=interval, y=steps, color = weektype)) +
+  geom_line() +
+  facet_wrap(~weektype, ncol = 1, nrow=2)
+print(s)
+```
